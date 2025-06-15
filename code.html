@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Notepad</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-bg: #fefae0;
+            --dark-color: #212529;
+            --icon-bg: #f7b267;
+            --text-color: #333;
+            --light-text: #6c757d;
+            --border-color: #e9e2c7;
+            --line-color: #e0e0e0;
+        }
+        body { margin: 0; font-family: sans-serif; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .phone-container { width: 375px; height: 812px; background-color: #fff; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .app-screen { flex-grow: 1; display: flex; flex-direction: column; background-color: var(--primary-bg); position: relative; overflow: hidden; }
+
+        /* --- Main Screen --- */
+        #main-screen { display: flex; flex-direction: column; height: 100%; width: 100%; transition: transform 0.3s ease-in-out; }
+        .app-header { background-color: var(--dark-color); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .app-header h1 { margin: 0; font-size: 20px; font-weight: 500; }
+        .app-header i { cursor: pointer; font-size: 18px; }
+        .sort-bar { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+        .sort-option { cursor: pointer; font-weight: 500; }
+        .content-area { flex-grow: 1; overflow-y: auto; padding-bottom: 80px; }
+        .notes-list { list-style: none; padding: 0; margin: 0; }
+        .note-item { padding: 15px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; position: relative; }
+        .note-icon { background-color: var(--icon-bg); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .note-content { flex-grow: 1; overflow: hidden; }
+        .note-title { font-weight: 500; margin: 0 0 4px 0; }
+        .note-details { font-size: 12px; color: var(--light-text); }
+        .note-options { color: var(--text-color); cursor: pointer; padding: 5px; font-size: 18px; }
+
+        /* --- Slide-in Menu --- */
+        #side-menu {
+            position: absolute;
+            top: 0;
+            left: -250px; /* Hidden by default */
+            width: 250px;
+            height: 100%;
+            background-color: #fff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 200;
+            transition: left 0.3s ease-in-out;
+            padding-top: 50px;
+        }
+        #side-menu.open { left: 0; }
+        #side-menu ul { list-style: none; padding: 0; margin: 0; }
+        #side-menu li { padding: 15px 20px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
+        #side-menu li:hover { background-color: #f0f0f0; }
+        #overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 199;
+        }
+        #overlay.show { display: block; }
+        
+        /* --- Editor Screen --- */
+        #editor-screen { display: none; flex-direction: column; height: 100%; background-color: #fff; }
+        .editor-header { background-color: var(--dark-color); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .editor-header i, .editor-header button { color: white; background: none; border: none; font-size: 18px; cursor: pointer; }
+        .editor-header button { font-weight: bold; }
+        #note-title-input { font-size: 22px; font-weight: bold; border: none; padding: 20px 15px 10px; outline: none; width: calc(100% - 30px); }
+        #note-body-textarea { flex-grow: 1; border: none; outline: none; padding: 10px 15px; font-size: 16px; line-height: 1.8em; resize: none; color: #333; background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 1.8em; background-attachment: local; }
+        
+        /* --- Common UI --- */
+        .context-menu { display: none; position: absolute; z-index: 100; background-color: white; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100px; list-style: none; padding: 5px 0; margin: 0; }
+        .context-menu li { padding: 8px 15px; cursor: pointer; font-size: 14px; }
+        .context-menu li:hover { background-color: #f0f0f0; }
+        .context-menu .delete { color: red; }
+        .fab-container { position: absolute; bottom: 30px; right: 20px; z-index: 100; }
+        .fab-options { position: absolute; bottom: 70px; right: 8px; display: flex; flex-direction: column; gap: 15px; align-items: center; opacity: 0; transform: translateY(20px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
+        .fab-container.active .fab-options { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .fab-option { display: flex; align-items: center; gap: 10px; color: var(--text-color); font-size: 12px; font-weight: 500; }
+        .fab-option .fab-icon { width: 40px; height: 40px; background-color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; color: var(--dark-color); }
+        #fab-main { width: 56px; height: 56px; background-color: var(--dark-color); color: white; border: none; border-radius: 50%; font-size: 24px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.2s ease; }
+        .fab-container.active #fab-main { transform: rotate(45deg); }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="app-screen">
+            <!-- ===== Side Menu (Hidden) ===== -->
+            <div id="side-menu">
+                <ul>
+                    <li id="home-menu-btn"><i class="fa-solid fa-home"></i> Home</li>
+                </ul>
+            </div>
+            <div id="overlay"></div>
+
+            <!-- ===== Main Screen ===== -->
+            <div id="main-screen">
+                <header class="app-header">
+                    <i class="fa-solid fa-bars" id="menu-btn"></i>
+                    <h1>Notepad</h1>
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </header>
+                <div class="sort-bar">
+                    <div class="sort-option" id="sort-title">Title <i class="fa-solid fa-arrow-up-down"></i></div>
+                    <div class="sort-option" id="sort-date">Date <i class="fa-solid fa-arrow-up"></i></div>
+                </div>
+                <div class="content-area">
+                    <ul class="notes-list" id="notes-list">
+                        <!-- Notes will be dynamically added here -->
+                    </ul>
+                </div>
+                <div class="fab-container" id="fab-container">
+                    <div class="fab-options">
+                        <div class="fab-option" id="add-pic-note"><span class="fab-text">Add Picture</span><div class="fab-icon"><i class="fa-solid fa-image"></i></div></div>
+                        <div class="fab-option" id="add-text-note"><span class="fab-text">Add Text</span><div class="fab-icon"><i class="fa-solid fa-font"></i></div></div>
+                    </div>
+                    <button id="fab-main"><i class="fa-solid fa-plus"></i></button>
+                </div>
+            </div>
+
+            <!-- ===== Editor Screen ===== -->
+            <div id="editor-screen">
+                <header class="editor-header">
+                    <i class="fa-solid fa-arrow-left" id="back-btn"></i>
+                    <button id="save-btn">SAVE</button>
+                </header>
+                <input type="text" id="note-title-input" placeholder="Title">
+                <textarea id="note-body-textarea" placeholder="Start writing your note..."></textarea>
+            </div>
+        </div>
+        
+        <ul class="context-menu" id="context-menu">
+            <li id="edit-option">Edit</li>
+            <li id="delete-option" class="delete">Delete</li>
+        </ul>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const sideMenu = document.getElementById('side-menu');
+        const overlay = document.getElementById('overlay');
+        const menuBtn = document.getElementById('menu-btn');
+        const notesList = document.getElementById('notes-list');
+        const mainScreen = document.getElementById('main-screen');
+        const editorScreen = document.getElementById('editor-screen');
+        const fabContainer = document.getElementById('fab-container');
+        const fabMainBtn = document.getElementById('fab-main');
+        const contextMenu = document.getElementById('context-menu');
+        
+        // Editor elements
+        const backBtn = document.getElementById('back-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const noteTitleInput = document.getElementById('note-title-input');
+        const noteBodyTextarea = document.getElementById('note-body-textarea');
+        
+        // State
+        let notes = [
+             { id: 1, title: 'absbsbsv', body: 'ansbz x. x x x', date: '2025-06-15' },
+             { id: 2, title: 'Me slowly loosing interest', body: 'in Instagram...', date: '2025-06-12' }
+        ];
+        let currentTargetNoteElement = null;
+        let currentEditNoteId = null;
+        let sortOrder = { title: 'asc', date: 'asc' };
+
+        // --- Functions ---
+        const renderNotes = () => {
+            notesList.innerHTML = '';
+            notes.forEach(note => {
+                const dateObj = new Date(note.date);
+                const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+                const newNote = document.createElement('li');
+                newNote.className = 'note-item';
+                newNote.dataset.id = note.id;
+                newNote.innerHTML = `
+                    <div class="note-icon"><i class="fa-solid fa-pencil"></i></div>
+                    <div class="note-content">
+                        <p class="note-title">${note.title}</p>
+                        <p class="note-details">${note.body.substring(0, 30)}... <br> ${formattedDate}</p>
+                    </div>
+                    <i class="fa-solid fa-ellipsis-vertical note-options"></i>`;
+                notesList.appendChild(newNote);
+            });
+        };
+
+        const showEditorScreen = (noteId = null) => {
+            currentEditNoteId = noteId;
+            if (noteId) {
+                const note = notes.find(n => n.id === noteId);
+                noteTitleInput.value = note.title;
+                noteBodyTextarea.value = note.body;
+            } else {
+                noteTitleInput.value = '';
+                noteBodyTextarea.value = '';
+            }
+            mainScreen.style.display = 'none';
+            editorScreen.style.display = 'flex';
+        };
+
+        const showMainScreen = () => {
+            editorScreen.style.display = 'none';
+            mainScreen.style.display = 'flex';
+            currentEditNoteId = null;
+            renderNotes();
+        };
+
+        const toggleMenu = () => {
+            sideMenu.classList.toggle('open');
+            overlay.classList.toggle('show');
+        };
+
+        // --- Event Listeners ---
+        menuBtn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+        document.getElementById('home-menu-btn').addEventListener('click', () => {
+            showMainScreen();
+            toggleMenu();
+        });
+
+        fabMainBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fabContainer.classList.toggle('active');
+        });
+
+        document.addEventListener('click', () => {
+            fabContainer.classList.remove('active');
+            contextMenu.style.display = 'none';
+        });
+
+        document.getElementById('add-text-note').addEventListener('click', () => showEditorScreen());
+        document.getElementById('add-pic-note').addEventListener('click', () => alert('Picture notes are coming soon!'));
+
+        backBtn.addEventListener('click', showMainScreen);
+
+        saveBtn.addEventListener('click', () => {
+            const title = noteTitleInput.value.trim();
+            const body = noteBodyTextarea.value.trim();
+            if (!title) return alert('Title is required.');
+            const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+            if (currentEditNoteId) {
+                const noteIndex = notes.findIndex(n => n.id === currentEditNoteId);
+                notes[noteIndex] = { ...notes[noteIndex], title, body, date };
+            } else {
+                notes.unshift({ id: Date.now(), title, body, date });
+            }
+            showMainScreen();
+        });
+        
+        notesList.addEventListener('click', e => {
+            if (e.target.classList.contains('note-options')) {
+                e.stopPropagation();
+                currentTargetNoteElement = e.target.closest('.note-item');
+                const rect = e.target.getBoundingClientRect();
+                contextMenu.style.top = `${rect.bottom}px`;
+                contextMenu.style.left = `${rect.left - contextMenu.offsetWidth}px`;
+                contextMenu.style.display = 'block';
+            }
+        });
+
+        document.getElementById('edit-option').addEventListener('click', () => {
+            if (currentTargetNoteElement) showEditorScreen(Number(currentTargetNoteElement.dataset.id));
+        });
+
+        document.getElementById('delete-option').addEventListener('click', () => {
+            if (currentTargetNoteElement && confirm('Delete this note?')) {
+                notes = notes.filter(n => n.id !== Number(currentTargetNoteElement.dataset.id));
+                renderNotes();
+            }
+        });
+
+        // Sorting Logic
+        document.getElementById('sort-title').addEventListener('click', () => {
+            const order = sortOrder.title === 'asc' ? 1 : -1;
+            notes.sort((a, b) => a.title.localeCompare(b.title) * order);
+            sortOrder.title = sortOrder.title === 'asc' ? 'desc' : 'asc';
+            renderNotes();
+        });
+
+        document.getElementById('sort-date').addEventListener('click', () => {
+            const order = sortOrder.date === 'asc' ? 1 : -1;
+            notes.sort((a, b) => (new Date(b.date) - new Date(a.date)) * order);
+            sortOrder.date = sortOrder.date === 'asc' ? 'desc' : 'asc';
+            renderNotes();
+        });
+        
+        // Initial render
+        renderNotes();
+    </script>
+</body>
+</html>
